@@ -102,12 +102,13 @@ const ADAPTIVE_INSTRUCTIONS = {
 
 // ---- Public API ----
 
-export async function generateQuestion({ role, interviewType, difficulty, resumeContext, history, adaptiveHint = 'maintain' }) {
+export async function generateQuestion({ role, interviewType, difficulty, company, resumeContext, history, adaptiveHint = 'maintain' }) {
   if (!aiEnabled) return mockQuestion({ role, history, adaptiveHint })
 
   const system = [
     'You are an experienced technical interviewer conducting a mock interview.',
     `Role: ${role}. Interview type: ${interviewType}. Difficulty: ${difficulty}.`,
+    company ? `The candidate is practicing for an interview at ${company} — where relevant, frame questions the way that company's interviews are known for.` : '',
     resumeContext ? `Candidate resume context:\n${resumeContext}` : 'No resume was provided.',
     'Ask one question at a time. If the candidate\'s last answer was vague or shallow, ask a sharper follow-up on the same topic instead of moving on.',
     ADAPTIVE_INSTRUCTIONS[adaptiveHint] || '',

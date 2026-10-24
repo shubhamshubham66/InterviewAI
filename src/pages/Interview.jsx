@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { getMeta, startInterview, submitAnswer, parseResume, improveAnswer } from '../api/client.js'
+import { getMeta, startInterview, submitAnswer, skipQuestion, endInterview, parseResume, improveAnswer } from '../api/client.js'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition.js'
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis.js'
 import { useCountdownTimer } from '../hooks/useCountdownTimer.js'
+import { useVoicePreference } from '../hooks/useVoicePreference.js'
 import Icon from '../components/icons.jsx'
 
 const QUESTION_TIME_LIMIT = 120
@@ -10,6 +11,7 @@ const QUESTION_TIME_LIMIT = 120
 const FALLBACK_ROLES = ['SDE Intern', 'Frontend Developer', 'Backend Developer', 'Data Analyst', 'HR Round', 'Core EIE / ECE']
 const FALLBACK_TYPES = ['Technical', 'Behavioral', 'HR']
 const FALLBACK_DIFFICULTIES = ['Easy', 'Medium', 'Hard']
+const FALLBACK_DURATIONS = [10, 15, 20, 30]
 
 function ScoreBadge({ score }) {
   const cls = score >= 8 ? 'bg-mint' : score >= 6 ? 'bg-amber' : 'bg-red-400'
@@ -20,6 +22,8 @@ function SetupStep({ meta, onStart, starting, error }) {
   const [role, setRole] = useState((meta?.roles || FALLBACK_ROLES)[0])
   const [interviewType, setInterviewType] = useState((meta?.types || FALLBACK_TYPES)[0])
   const [difficulty, setDifficulty] = useState((meta?.difficulties || FALLBACK_DIFFICULTIES)[0])
+  const [company, setCompany] = useState('')
+  const [duration, setDuration] = useState(15)
   const [resumeContext, setResumeContext] = useState('')
   const [resumeName, setResumeName] = useState('')
   const [parsing, setParsing] = useState(false)
@@ -99,6 +103,37 @@ function SetupStep({ meta, onStart, starting, error }) {
           </div>
         </div>
 
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="company" className="text-sm font-semibold text-muted">
+              Company (optional)
+            </label>
+            <input
+              id="company"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="e.g. Google, a startup, any"
+              className="mt-1.5 w-full rounded-xl border border-line px-4 py-2.5 text-sm focus:border-signal focus:outline-none"
+            />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-muted">Duration</p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {(meta?.durations || FALLBACK_DURATIONS).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDuration(d)}
+                  aria-pressed={duration === d}
+                  className={`rounded-full border px-3 py-1.5 text-sm ${duration === d ? 'border-ink bg-ink text-white' : 'border-line bg-white hover:border-ink/40'}`}
+                >
+                  {d} min
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div>
           <p className="text-sm font-semibold text-muted">Resume (optional)</p>
           <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted hover:border-ink/40">
@@ -119,7 +154,7 @@ function SetupStep({ meta, onStart, starting, error }) {
         <button
           type="button"
           disabled={starting || parsing}
-          onClick={() => onStart({ role, interviewType, difficulty, resumeContext })}
+          onClick={() => onStart({ role, interviewType, difficulty, company, duration, resumeContext })}
           className="w-full rounded-full bg-signal px-7 py-3.5 font-semibold text-white hover:bg-signalDark disabled:opacity-60"
         >
           {starting ? 'Starting…' : `Start ${role} practice`}
@@ -145,8 +180,11 @@ function SessionStep({ session, onAnswered, onFinished }) {
   const [turnCount, setTurnCount] = useState(0)
   const [error, setError] = useState('')
   const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const [skipping, setSkipping] = useState(false)
+  const [ending, setEnding] = useState(false)
   const speech = useSpeechRecognition()
   const tts = useSpeechSynthesis()
+  const voicePref = useVoicePreference()
   const textareaRef = useRef(null)
   const answerStartRef = useRef(Date.now())
   const timer = useCountdownTimer(QUESTION_TIME_LIMIT, question)
@@ -157,10 +195,25 @@ function SessionStep({ session, onAnswered, onFinished }) {
 
   useEffect(() => {
     answerStartRef.current = Date.now()
-    if (voiceEnabled && tts.supported) tts.speak(question)
+    if (voiceEnabled && tts.supported) tts.speak(question, { rate: voicePref.rate, voice: voicePref.selectedVoice })
     return () => tts.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question])
+
+  function applyNext(res) {
+    setTurnCount((c) => c + 1)
+    if (res.done) {
+      onFinished(res.report)
+      return true
+    }
+    setAdaptiveHint(res.adaptiveHint && res.adaptiveHint !== 'maintain' ? res.adaptiveHint : null)
+    setQuestion(res.question)
+    setIsFollowUp(res.isFollowUp)
+    setAnswer('')
+    speech.reset()
+    textareaRef.current?.focus()
+    return false
+  }
 
   async function handleSubmit() {
     if (!answer.trim() || submitting) return
@@ -171,21 +224,42 @@ function SessionStep({ session, onAnswered, onFinished }) {
       const res = await submitAnswer({ sessionId: session.sessionId, answer, durationSeconds })
       setLastEvaluation(res.evaluation)
       setLastSpeechCoach(res.speechCoach)
-      setTurnCount((c) => c + 1)
-      if (res.done) {
-        onFinished(res.report)
-        return
-      }
-      setAdaptiveHint(res.adaptiveHint && res.adaptiveHint !== 'maintain' ? res.adaptiveHint : null)
-      setQuestion(res.question)
-      setIsFollowUp(res.isFollowUp)
-      setAnswer('')
-      speech.reset()
-      textareaRef.current?.focus()
+      applyNext(res)
     } catch (err) {
       setError(err.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleSkip() {
+    if (skipping) return
+    setSkipping(true)
+    setError('')
+    try {
+      const res = await skipQuestion({ sessionId: session.sessionId })
+      setLastEvaluation(null)
+      setLastSpeechCoach(null)
+      applyNext(res)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSkipping(false)
+    }
+  }
+
+  async function handleEnd() {
+    if (ending) return
+    if (turnCount === 0 && !window.confirm('End this interview now with no answers recorded?')) return
+    setEnding(true)
+    setError('')
+    try {
+      const res = await endInterview({ sessionId: session.sessionId })
+      onFinished(res.report)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setEnding(false)
     }
   }
 
@@ -194,6 +268,8 @@ function SessionStep({ session, onAnswered, onFinished }) {
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold uppercase tracking-wide text-muted">
           {session.role} · {session.interviewType} · Question {turnCount + 1}
+          {session.maxQuestions ? ` of ${session.maxQuestions}` : ''}
+          {session.company ? ` · ${session.company}` : ''}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {isFollowUp && <span className="rounded-full bg-amber/15 px-3 py-1 text-xs font-semibold text-amber">Follow-up</span>}
@@ -211,7 +287,7 @@ function SessionStep({ session, onAnswered, onFinished }) {
             <>
               <button
                 type="button"
-                onClick={() => tts.speak(question)}
+                onClick={() => tts.speak(question, { rate: voicePref.rate, voice: voicePref.selectedVoice })}
                 className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium hover:border-ink/40"
               >
                 Repeat question
@@ -300,16 +376,29 @@ function SessionStep({ session, onAnswered, onFinished }) {
           ) : (
             <span className="text-xs text-muted">Voice input isn't supported in this browser — type your answer.</span>
           )}
-          <button
-            type="button"
-            disabled={!answer.trim() || submitting}
-            onClick={handleSubmit}
-            className="rounded-full bg-signal px-7 py-3 font-semibold text-white hover:bg-signalDark disabled:opacity-60"
-          >
-            {submitting ? 'Evaluating…' : 'Submit answer'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSkip}
+              disabled={skipping || submitting}
+              className="rounded-full border border-line px-4 py-3 text-sm font-medium hover:border-ink/40 disabled:opacity-60"
+            >
+              {skipping ? 'Skipping…' : 'Skip'}
+            </button>
+            <button
+              type="button"
+              disabled={!answer.trim() || submitting}
+              onClick={handleSubmit}
+              className="rounded-full bg-signal px-7 py-3 font-semibold text-white hover:bg-signalDark disabled:opacity-60"
+            >
+              {submitting ? 'Evaluating…' : 'Submit answer'}
+            </button>
+          </div>
         </div>
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+        <button type="button" onClick={handleEnd} disabled={ending} className="mt-4 text-xs text-muted hover:text-red-500 disabled:opacity-60">
+          {ending ? 'Ending…' : 'End interview now'}
+        </button>
       </div>
     </section>
   )
@@ -389,25 +478,38 @@ function ReportStep({ report, onRestart }) {
       <ul className="mt-6 divide-y divide-line rounded-3xl border border-line bg-white">
         {report.turns.map((t, i) => (
           <li key={i} className="flex gap-4 p-5">
-            <span className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${colour(t.evaluation.score)}`} aria-hidden="true" />
+            <span
+              className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${t.evaluation ? colour(t.evaluation.score) : 'bg-line'}`}
+              aria-hidden="true"
+            />
             <div className="flex-1">
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold">{t.question}</p>
-                <p className="font-display font-bold">{t.evaluation.score}</p>
+                {t.evaluation ? (
+                  <p className="font-display font-bold">{t.evaluation.score}</p>
+                ) : (
+                  <span className="rounded-full bg-paper px-2.5 py-1 text-xs font-medium text-muted">Skipped</span>
+                )}
               </div>
-              <p className="mt-1 text-[15px] text-muted">{t.answer}</p>
-              <p className="mt-2 text-[15px] text-ink">{t.evaluation.feedback}</p>
-              {t.evaluation.idealAnswerHint && (
-                <p className="mt-1 text-sm italic text-muted">Ideal answer: {t.evaluation.idealAnswerHint}</p>
+              {t.evaluation ? (
+                <>
+                  <p className="mt-1 text-[15px] text-muted">{t.answer}</p>
+                  <p className="mt-2 text-[15px] text-ink">{t.evaluation.feedback}</p>
+                  {t.evaluation.idealAnswerHint && (
+                    <p className="mt-1 text-sm italic text-muted">Ideal answer: {t.evaluation.idealAnswerHint}</p>
+                  )}
+                  {t.speechCoach && (
+                    <p className="mt-1 text-xs text-muted">
+                      {t.speechCoach.wordCount} words
+                      {t.speechCoach.wpm != null && ` · ${t.speechCoach.wpm} wpm (${t.speechCoach.paceLabel})`}
+                      {t.speechCoach.fillerCount > 0 && ` · ${t.speechCoach.fillerCount} filler words`}
+                    </p>
+                  )}
+                  <ImprovePanel role={report.role} question={t.question} answer={t.answer} />
+                </>
+              ) : (
+                <p className="mt-1 text-sm text-muted">Not answered.</p>
               )}
-              {t.speechCoach && (
-                <p className="mt-1 text-xs text-muted">
-                  {t.speechCoach.wordCount} words
-                  {t.speechCoach.wpm != null && ` · ${t.speechCoach.wpm} wpm (${t.speechCoach.paceLabel})`}
-                  {t.speechCoach.fillerCount > 0 && ` · ${t.speechCoach.fillerCount} filler words`}
-                </p>
-              )}
-              <ImprovePanel role={report.role} question={t.question} answer={t.answer} />
             </div>
           </li>
         ))}
@@ -436,12 +538,12 @@ export default function Interview() {
     getMeta().then(setMeta).catch(() => {})
   }, [])
 
-  async function handleStart({ role, interviewType, difficulty, resumeContext }) {
+  async function handleStart({ role, interviewType, difficulty, company, duration, resumeContext }) {
     setStarting(true)
     setStartError('')
     try {
-      const res = await startInterview({ role, interviewType, difficulty, resumeContext })
-      setSession({ ...res, role, interviewType, difficulty })
+      const res = await startInterview({ role, interviewType, difficulty, company, duration, resumeContext })
+      setSession({ ...res, role, interviewType, difficulty, company })
       setStep('session')
     } catch (err) {
       setStartError(err.message)

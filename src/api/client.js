@@ -64,12 +64,20 @@ export function getMeta() {
   return request('/interview/meta')
 }
 
-export function startInterview({ role, interviewType, difficulty, resumeContext }) {
-  return postJSON('/interview/start', { role, interviewType, difficulty, resumeContext })
+export function startInterview({ role, interviewType, difficulty, company, duration, resumeContext }) {
+  return postJSON('/interview/start', { role, interviewType, difficulty, company, duration, resumeContext })
 }
 
 export function submitAnswer({ sessionId, answer, durationSeconds }) {
   return postJSON('/interview/answer', { sessionId, answer, durationSeconds })
+}
+
+export function skipQuestion({ sessionId }) {
+  return postJSON('/interview/skip', { sessionId })
+}
+
+export function endInterview({ sessionId }) {
+  return postJSON('/interview/end', { sessionId })
 }
 
 export function improveAnswer({ role, question, answer }) {
@@ -114,6 +122,10 @@ export function getQuestionBankItem(id) {
   return request(`/question-bank/${id}`)
 }
 
+export function exportQuestionBank() {
+  return request('/question-bank/export')
+}
+
 // ---- Admin / placement dashboard ----
 
 export function getAdminOverview() {
@@ -148,6 +160,20 @@ export function feedbackPeerTurn(code, turnId, { feedback, score }) {
 
 export function getPeerLeaderboard() {
   return request('/peer/leaderboard')
+}
+
+// ---- Profile / settings / progress ----
+
+export function getProfile() {
+  return request('/profile')
+}
+
+export function updateProfile(data) {
+  return patchJSON('/profile', data)
+}
+
+export function getProgress() {
+  return request('/profile/progress')
 }
 
 export function peerSocketUrl(code) {

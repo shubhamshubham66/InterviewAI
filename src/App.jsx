@@ -10,6 +10,8 @@ const Interview = lazy(() => import('./pages/Interview.jsx'))
 const Practice = lazy(() => import('./pages/Practice.jsx'))
 const Peer = lazy(() => import('./pages/Peer.jsx'))
 const Admin = lazy(() => import('./pages/Admin.jsx'))
+const Settings = lazy(() => import('./pages/Settings.jsx'))
+const Reports = lazy(() => import('./pages/Reports.jsx'))
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
               <Route path="/practice" element={<Practice />} />
               <Route path="/peer" element={<Peer />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
             </Routes>

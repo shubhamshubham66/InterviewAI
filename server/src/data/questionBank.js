@@ -66,3 +66,8 @@ export function listQuestions({ category, difficulty }) {
 export function getQuestion(id) {
   return QUESTION_BANK.find((item) => item.id === Number(id)) || null
 }
+
+// Full dataset (with answers) for the client to cache locally and practice offline.
+export function listAllWithAnswers() {
+  return QUESTION_BANK
+}

@@ -8,11 +8,12 @@ export function useSpeechSynthesis() {
   useEffect(() => () => window.speechSynthesis?.cancel(), [])
 
   const speak = useCallback(
-    (text, { rate = 1 } = {}) => {
+    (text, { rate = 1, voice = null } = {}) => {
       if (!supported || !text) return
       window.speechSynthesis.cancel()
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.rate = rate
+      if (voice) utterance.voice = voice
       utterance.onstart = () => setSpeaking(true)
       utterance.onend = () => setSpeaking(false)
       utterance.onerror = () => setSpeaking(false)

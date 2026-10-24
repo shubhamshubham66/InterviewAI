@@ -27,12 +27,19 @@ AI mock interview practice: an AI interviewer asks role-specific questions, list
 - [x] College Placement Dashboard — role-gated `/admin` page with aggregate stats, a skill-gap report, and per-student activity
 - [x] Accessibility & practice controls — adjustable text size (sidebar), keyboard-reachable controls, a skip-to-content link, a repeat-question button, and a pause/resume per-question timer
 
-**Later phases**
-- [ ] Settings, notifications, offline practice
+**Phase 5 — Final Supporting Features**
+- [x] Smart Interview Setup — company (optional) and duration (10/15/20/30 min, maps to question count) added to role/round/difficulty
+- [x] Real-Time Interview Controls — pause/resume timer, repeat question (Phase 4) plus skip question and end interview early (new)
+- [x] Text-to-Speech & Voice Selection — pick the AI interviewer's voice and speaking speed in Settings
+- [x] Notifications & Reminders — opt-in daily practice reminder (Notification API, fires once/day while the app is open — not true push) and a weekly progress report with a practice streak
+- [x] Offline Question Practice — download the question bank for offline use; browsing and answers work with no network once downloaded
+- [x] User Profile & Settings — skills, target role, preferred language, voice preferences, account deletion
+
+All 30 originally-specified features are now implemented, with the scoping notes below.
 
 ## Project layout
-- `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`, peer rooms at `/peer`, placement dashboard at `/admin`, auth at `/login` and `/signup`.
-- `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank, and (new in Phase 4) handles auth, persists results to SQLite, and runs peer-room REST + WebSocket endpoints.
+- `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`, peer rooms at `/peer`, placement dashboard at `/admin`, your progress at `/reports`, profile/voice/notifications at `/settings`, auth at `/login` and `/signup`.
+- `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank, handles auth, persists results to SQLite, and runs peer-room REST + WebSocket endpoints.
 
 ## Run locally
 Frontend and backend run as separate processes.
@@ -78,3 +85,5 @@ JWT_SECRET=<a long random string>
 - **react-router-dom**: there's an open advisory (open-redirect in `<Link>`/`useNavigate`, SSR-hydration issue) with no fix yet on the 6.x line — only 7.x is patched. Not exploitable here since this is a client-only SPA with no SSR and no route targets built from untrusted input, but worth a deliberate v7 migration later.
 - **Placement-cell signup is self-service** (feature 22 needs some way to create that role without a full invite system to demo it): signup lets anyone pick "Placement cell". Fine for a personal/demo project; a real deployment should replace this with admin-invited accounts.
 - **SQLite, single file**: fine for one deployment's worth of users; a multi-instance/horizontally-scaled deployment would need a networked database (Postgres, etc.) instead.
+- **Daily reminder is in-tab only**: it uses the browser Notification API, not a real push service (no service worker, no VAPID keys) — it only fires once a day while InterviewAI is open in a tab, not when the device is locked or the tab is closed. Upgrading to true push would mean adding a service worker and a push subscription backend.
+- **Offline practice covers the question bank only**: there's no service worker/app-shell caching, so the app itself still needs network to load; once loaded, a downloaded question bank works fully offline (browsing, categories, answers). The AI-graded interview and coding flows always need the backend reachable.

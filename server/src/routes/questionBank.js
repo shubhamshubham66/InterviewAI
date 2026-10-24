@@ -1,10 +1,15 @@
 import { Router } from 'express'
-import { getCategories, listQuestions, getQuestion } from '../data/questionBank.js'
+import { getCategories, listQuestions, getQuestion, listAllWithAnswers } from '../data/questionBank.js'
 
 const router = Router()
 
 router.get('/categories', (_req, res) => {
   res.json({ categories: getCategories() })
+})
+
+// Full dataset including answers, for the client to cache for offline practice.
+router.get('/export', (_req, res) => {
+  res.json({ questions: listAllWithAnswers() })
 })
 
 router.get('/', (req, res) => {

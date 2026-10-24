@@ -10,8 +10,8 @@ const NAV = [
   ['Practice', 'play', '/practice'],
   ['Peer practice', 'chart', '/peer'],
   ['AI insights', 'spark', null],
-  ['Reports', 'doc', null],
-  ['Settings', 'gear', null],
+  ['Reports', 'doc', '/reports'],
+  ['Settings', 'gear', '/settings'],
 ]
 
 export default function Sidebar() {

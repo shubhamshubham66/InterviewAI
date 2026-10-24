@@ -8,6 +8,7 @@ import questionBankRouter from './routes/questionBank.js'
 import authRouter from './routes/auth.js'
 import adminRouter from './routes/admin.js'
 import peerRouter from './routes/peer.js'
+import profileRouter from './routes/profile.js'
 import { aiEnabled } from './services/ai.js'
 import { attachPeerWebSocket } from './ws/peerServer.js'
 import './db/index.js'
@@ -30,6 +31,7 @@ app.use('/api/coding', codingRouter)
 app.use('/api/question-bank', questionBankRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/peer', peerRouter)
+app.use('/api/profile', profileRouter)
 
 app.use((err, _req, res, _next) => {
   console.error(err)

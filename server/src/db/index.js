@@ -66,4 +66,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_peer_participants_room ON peer_participants(room_id);
 `)
 
+// Lightweight migration: add profile columns to users if this DB predates them.
+const userColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name))
+const PROFILE_COLUMNS = {
+  skills: "TEXT NOT NULL DEFAULT ''",
+  target_role: "TEXT NOT NULL DEFAULT ''",
+  preferred_language: "TEXT NOT NULL DEFAULT 'English'",
+  interview_preferences: "TEXT NOT NULL DEFAULT '{}'",
+}
+for (const [column, definition] of Object.entries(PROFILE_COLUMNS)) {
+  if (!userColumns.has(column)) {
+    db.exec(`ALTER TABLE users ADD COLUMN ${column} ${definition}`)
+  }
+}
+
 export default db
