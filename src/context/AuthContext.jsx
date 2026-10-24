@@ -1,5 +1,14 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { getToken, setToken, fetchMe, login as apiLogin, signup as apiSignup, deleteAccount as apiDeleteAccount } from '../api/client.js'
+import {
+  getToken,
+  setToken,
+  fetchMe,
+  login as apiLogin,
+  signup as apiSignup,
+  deleteAccount as apiDeleteAccount,
+  requestOtp as apiRequestOtp,
+  verifyOtp as apiVerifyOtp,
+} from '../api/client.js'
 
 const AuthContext = createContext(null)
 
@@ -32,6 +41,17 @@ export function AuthProvider({ children }) {
     return res.user
   }, [])
 
+  const requestOtp = useCallback(async (email) => {
+    await apiRequestOtp({ email })
+  }, [])
+
+  const loginWithOtp = useCallback(async ({ email, code, name }) => {
+    const res = await apiVerifyOtp({ email, code, name })
+    setToken(res.token)
+    setUser(res.user)
+    return res.user
+  }, [])
+
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
@@ -43,7 +63,11 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  return <AuthContext.Provider value={{ user, loading, login, signup, logout, deleteAccount }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, loading, login, signup, requestOtp, loginWithOtp, logout, deleteAccount }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

@@ -12,7 +12,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 const TOKEN_TTL = '7d'
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function signToken(user) {
   return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: TOKEN_TTL })
@@ -52,7 +52,23 @@ export async function createUser({ name, email, password, role }) {
 }
 
 export async function verifyPassword(user, password) {
+  if (!user.password_hash) return false // account created passwordless (email-code login only)
   return bcrypt.compare(password || '', user.password_hash)
+}
+
+// Used by email-code (OTP) login: the email itself is the verified identity,
+// so an existing account just logs in, and a new one is created passwordless
+// (password_hash '' — password login stays unavailable for it, see verifyPassword).
+export function findOrCreateByEmail({ name, email }) {
+  email = (email || '').trim().toLowerCase()
+  if (!EMAIL_RE.test(email)) throw httpError(400, 'Enter a valid email address.')
+
+  const existing = findUserByEmail(email)
+  if (existing) return existing
+
+  const safeName = (name || '').trim().slice(0, 60) || email.split('@')[0]
+  const info = db.prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run(safeName, email, '', 'student')
+  return findUserById(info.lastInsertRowid)
 }
 
 function httpError(status, message) {

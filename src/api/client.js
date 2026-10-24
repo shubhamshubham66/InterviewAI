@@ -50,6 +50,14 @@ export function login({ email, password }) {
   return postJSON('/auth/login', { email, password })
 }
 
+export function requestOtp({ email }) {
+  return postJSON('/auth/otp/request', { email })
+}
+
+export function verifyOtp({ email, code, name }) {
+  return postJSON('/auth/otp/verify', { email, code, name })
+}
+
 export function fetchMe() {
   return request('/auth/me')
 }

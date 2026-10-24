@@ -9,6 +9,7 @@ test('signup logs the user in and shows their name in the sidebar', async ({ pag
 
 test('rejects a weak password with a clear error', async ({ page }) => {
   await page.goto('/signup', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Password', exact: true }).click()
   await page.fill('#name', 'Weak Pass')
   await page.fill('#email', uniqueEmail('weak'))
   await page.fill('#password', '123')

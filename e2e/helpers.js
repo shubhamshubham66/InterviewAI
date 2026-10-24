@@ -4,6 +4,9 @@ export function uniqueEmail(prefix) {
 
 export async function signup(page, { name, email, password = 'password123', role = 'student' } = {}) {
   await page.goto('/signup', { waitUntil: 'networkidle' })
+  // Signup defaults to the "Email code" tab — these tests want the
+  // deterministic password flow (no email step to read a code from).
+  await page.getByRole('button', { name: 'Password', exact: true }).click()
   await page.fill('#name', name)
   await page.fill('#email', email || uniqueEmail('user'))
   await page.fill('#password', password)

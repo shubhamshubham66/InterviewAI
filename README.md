@@ -43,6 +43,9 @@ All 30 originally-specified features are now implemented, with the scoping notes
 - [x] Cost control — rate limiting on every AI-calling and code-execution route, keyed per signed-in user (falling back to IP), not just on auth
 - [x] CI (`.github/workflows/ci.yml`) — runs backend tests, the frontend build, and the full E2E suite on every push/PR
 
+**Since then**
+- [x] Email-code (OTP) login via Brevo, alongside the existing password login — see below
+
 ## Project layout
 - `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`, peer rooms at `/peer`, placement dashboard at `/admin`, your progress at `/reports`, profile/voice/notifications at `/settings`, auth at `/login` and `/signup`.
 - `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank, handles auth, persists results to SQLite, and runs peer-room REST + WebSocket endpoints.
@@ -71,6 +74,15 @@ The backend works out of the box in **mock mode** — sample questions and heuri
 To enable real AI-generated questions and evaluation, copy `server/.env.example` to `server/.env` and set:
 ```
 ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Email-code (OTP) login
+Signup and login both default to an "Email code" tab: enter your email, get a 6-digit code, enter it — no password. It works for both brand-new accounts (creates one, passwordless) and existing ones (just logs in); a traditional "Password" tab is still there alongside it. Codes expire after 10 minutes, are single-use, and lock out after 5 wrong attempts.
+
+Emails send via **Brevo**, with the sender name set to "InterviewAI". Without `BREVO_API_KEY` set, the backend logs the code to its own console instead of emailing it — same mock-mode pattern as the AI key, so the whole flow is testable with no setup. To send real emails, set in `server/.env`:
+```
+BREVO_API_KEY=xkeysib-...
+BREVO_SENDER_EMAIL=you@yourdomain.com   # must be a verified sender in your Brevo account
 ```
 
 ### Testing
