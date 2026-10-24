@@ -1,0 +1,615 @@
+From 2ccfc2cb898ad3f1a9f71ea4212b616567e42268 Mon Sep 17 00:00:00 2001
+From: Shubham <connect@stepaheadindia.com>
+Date: Sat, 24 Oct 2026 17:17:10 +0000
+Subject: [PATCH] Redesign landing page with sidebar nav + dashboard-style hero
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Replaces the top nav and simple live-demo mock with a dark sidebar
+(Dashboard/Interviews/Analysis/AI insights/Practice/Reports/Settings)
+and a dashboard-style hero panel: video call tile, AI interview score
+gauge, score breakdown donut, practice recommendations, and AI
+insights — matching the reference UI/UX, with placeholder avatars
+instead of stock photos.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Fu2sSsp6bDbP9q2Ux1SHG6
+---
+ src/App.jsx                         |  24 ++--
+ src/components/DashboardPreview.jsx | 206 ++++++++++++++++++++++++++++
+ src/components/LiveDemo.jsx         | 110 ---------------
+ src/components/Nav.jsx              |  41 ------
+ src/components/Sections.jsx         |  11 +-
+ src/components/Sidebar.jsx          |  79 +++++++++++
+ src/components/icons.jsx            |  31 +++++
+ tailwind.config.js                  |   1 +
+ 8 files changed, 337 insertions(+), 166 deletions(-)
+ create mode 100644 src/components/DashboardPreview.jsx
+ delete mode 100644 src/components/LiveDemo.jsx
+ delete mode 100644 src/components/Nav.jsx
+ create mode 100644 src/components/Sidebar.jsx
+ create mode 100644 src/components/icons.jsx
+
+diff --git a/src/App.jsx b/src/App.jsx
+index 5ba0c92..573b215 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -1,19 +1,21 @@
+-import Nav from './components/Nav.jsx'
++import Sidebar from './components/Sidebar.jsx'
+ import { Hero, HowItWorks, Features, ReportPreview, FAQ, CTA, Footer } from './components/Sections.jsx'
+ 
+ export default function App() {
+   return (
+     <>
+-      <Nav />
+-      <main>
+-        <Hero />
+-        <HowItWorks />
+-        <Features />
+-        <ReportPreview />
+-        <FAQ />
+-        <CTA />
+-      </main>
+-      <Footer />
++      <Sidebar />
++      <div className="lg:pl-64">
++        <main>
++          <Hero />
++          <HowItWorks />
++          <Features />
++          <ReportPreview />
++          <FAQ />
++          <CTA />
++        </main>
++        <Footer />
++      </div>
+     </>
+   )
+ }
+diff --git a/src/components/DashboardPreview.jsx b/src/components/DashboardPreview.jsx
+new file mode 100644
+index 0000000..100423a
+--- /dev/null
++++ b/src/components/DashboardPreview.jsx
+@@ -0,0 +1,206 @@
++import Icon from './icons.jsx'
++
++const SCORE = 78
++
++const BREAKDOWN = [
++  ['Technical', 20, '#2F5BEA'],
++  ['Clarity', 10, '#2FA37A'],
++  ['Emotion', 15, '#F2A93B'],
++  ['Communication', 25, '#9B6BF2'],
++  ['Confidence', 30, '#EF6FA0'],
++]
++
++const RECS = ['bulb', 'target', 'mic', 'notes']
++
++const INSIGHTS = [
++  ['check', 'text-mint', 'Strength Insight', 'You maintained strong confidence during technical questions.'],
++  ['warn', 'text-amber', 'Improvement', 'Confidence dropped slightly during behavioural questions.'],
++  ['flag', 'text-signal', 'Actionable Recommendation', 'Practice answering behavioural questions using the STAR method for clearer structure.'],
++]
++
++function Gauge({ value }) {
++  const r = 50
++  const c = 2 * Math.PI * r
++  const offset = c - (value / 100) * c
++  return (
++    <svg viewBox="0 0 120 120" className="mx-auto h-36 w-36">
++      <circle cx="60" cy="60" r={r} stroke="#E7ECF7" strokeWidth="10" fill="none" />
++      <circle
++        cx="60"
++        cy="60"
++        r={r}
++        stroke="#2F5BEA"
++        strokeWidth="10"
++        fill="none"
++        strokeLinecap="round"
++        strokeDasharray={c}
++        strokeDashoffset={offset}
++        transform="rotate(-90 60 60)"
++      />
++      <text x="60" y="58" textAnchor="middle" fontSize="22" fontWeight="800" fill="#1B2340">
++        {value}%
++      </text>
++      <text x="60" y="76" textAnchor="middle" fontSize="10" fill="#5F6888">
++        AI score
++      </text>
++    </svg>
++  )
++}
++
++function Donut() {
++  let acc = 0
++  const stops = BREAKDOWN.map(([, pct, color]) => {
++    const start = acc
++    acc += pct
++    return `${color} ${start}% ${acc}%`
++  }).join(', ')
++  return (
++    <div className="relative mx-auto h-32 w-32">
++      <div className="h-32 w-32 rounded-full" style={{ background: `conic-gradient(${stops})` }} aria-hidden="true" />
++      <div className="absolute inset-[14px] rounded-full bg-white" />
++    </div>
++  )
++}
++
++function CallTile({ label, initials }) {
++  return (
++    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-ink to-signal">
++      <div className="grid min-h-[160px] place-items-center sm:min-h-[200px]">
++        <span className="grid h-16 w-16 place-items-center rounded-full bg-white/15 font-display text-xl font-bold text-white">
++          {initials}
++        </span>
++      </div>
++      <span className="absolute bottom-3 left-3 rounded-full bg-black/30 px-2.5 py-1 text-xs text-white">{label}</span>
++    </div>
++  )
++}
++
++export default function DashboardPreview() {
++  return (
++    <div className="rounded-[28px] bg-blush p-5 shadow-[0_30px_60px_-30px_rgba(27,35,64,.35)] sm:p-7">
++      <div className="flex flex-wrap items-center justify-between gap-3">
++        <div className="flex items-center gap-3">
++          <button type="button" className="grid h-9 w-9 place-items-center rounded-full bg-white text-ink" aria-label="Back">
++            <Icon name="back" className="h-4 w-4" />
++          </button>
++          <h3 className="font-display text-lg font-bold">Interview for UI/UX designer</h3>
++        </div>
++        <div className="flex items-center gap-3">
++          <button type="button" className="grid h-9 w-9 place-items-center rounded-full bg-white text-ink" aria-label="Notifications">
++            <Icon name="bell" className="h-4 w-4" />
++          </button>
++          <span className="flex items-center gap-2 rounded-full bg-white py-1 pl-3 pr-1 text-sm font-medium text-ink">
++            You
++            <span className="grid h-7 w-7 place-items-center rounded-full bg-signal text-xs font-bold text-white">S</span>
++          </span>
++        </div>
++      </div>
++
++      <div className="mt-6 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
++        <div>
++          <div className="rounded-2xl bg-ink p-4 text-white">
++            <div className="grid grid-cols-2 gap-3">
++              <CallTile label="AI Interviewer" initials="AI" />
++              <CallTile label="You" initials="S" />
++            </div>
++            <div className="mt-4 flex items-center justify-between text-xs text-white/60">
++              <span className="flex items-center gap-1.5">
++                <span className="h-2 w-2 rounded-full bg-red-400" /> Recording
++              </span>
++              <span>23:06 / 47:09</span>
++            </div>
++            <div className="mt-2 h-1.5 rounded-full bg-white/10">
++              <div className="h-full w-1/2 rounded-full bg-signal" />
++            </div>
++            <div className="mt-4 flex items-center justify-center gap-3">
++              {['camera', 'mic', 'volume'].map((n) => (
++                <button
++                  key={n}
++                  type="button"
++                  className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/15"
++                  aria-label={n}
++                >
++                  <Icon name={n} className="h-4 w-4" />
++                </button>
++              ))}
++              <button type="button" className="grid h-10 w-10 place-items-center rounded-full bg-red-500 text-white" aria-label="End call">
++                <Icon name="phoneOff" className="h-4 w-4" />
++              </button>
++            </div>
++          </div>
++
++          <div className="mt-5 grid gap-5 sm:grid-cols-2">
++            <div className="rounded-2xl bg-white p-5 text-center">
++              <p className="text-sm font-semibold text-muted">AI interview score</p>
++              <Gauge value={SCORE} />
++              <p className="mt-1 text-sm text-muted">Good — mostly ready, a few areas to improve</p>
++              <div className="mt-3 flex items-center justify-center gap-2 text-sm">
++                <span className="text-muted">Move forward?</span>
++                <button type="button" className="rounded-full bg-mint px-3 py-1 font-semibold text-white">
++                  Yes
++                </button>
++                <button type="button" className="rounded-full bg-line px-3 py-1 font-semibold text-ink">
++                  No
++                </button>
++              </div>
++            </div>
++            <div className="rounded-2xl bg-white p-5">
++              <p className="text-center text-sm font-semibold text-muted">AI score breakdown</p>
++              <div className="mt-2">
++                <Donut />
++              </div>
++              <ul className="mt-3 space-y-1 text-xs">
++                {BREAKDOWN.map(([label, pct, color]) => (
++                  <li key={label} className="flex items-center justify-between">
++                    <span className="flex items-center gap-1.5 text-muted">
++                      <span className="h-2 w-2 rounded-full" style={{ background: color }} aria-hidden="true" />
++                      {label}
++                    </span>
++                    <span className="font-semibold text-ink">{pct}%</span>
++                  </li>
++                ))}
++              </ul>
++            </div>
++          </div>
++        </div>
++
++        <div className="space-y-5">
++          <div className="rounded-2xl bg-white p-5">
++            <p className="text-sm font-semibold text-muted">Practice recommendation</p>
++            <div className="mt-3 grid grid-cols-2 gap-3">
++              {RECS.map((icon, k) => (
++                <button
++                  key={icon}
++                  type="button"
++                  className={`grid aspect-square place-items-center rounded-2xl ${
++                    ['bg-amber/15 text-amber', 'bg-red-100 text-red-500', 'bg-signal/10 text-signal', 'bg-mint/15 text-mint'][k]
++                  }`}
++                  aria-label={icon}
++                >
++                  <Icon name={icon} className="h-6 w-6" />
++                </button>
++              ))}
++            </div>
++          </div>
++          <div className="rounded-2xl bg-white p-5">
++            <p className="flex items-center gap-1.5 text-sm font-semibold text-muted">
++              <Icon name="spark" className="h-4 w-4 text-signal" /> AI insights
++            </p>
++            <ul className="mt-3 space-y-3 text-sm">
++              {INSIGHTS.map(([icon, cls, title, desc]) => (
++                <li key={title} className="flex gap-2">
++                  <Icon name={icon} className={`mt-0.5 h-4 w-4 shrink-0 ${cls}`} />
++                  <span>
++                    <strong className="font-semibold">{title}</strong>
++                    <br />
++                    <span className="text-muted">{desc}</span>
++                  </span>
++                </li>
++              ))}
++            </ul>
++          </div>
++        </div>
++      </div>
++    </div>
++  )
++}
+diff --git a/src/components/LiveDemo.jsx b/src/components/LiveDemo.jsx
+deleted file mode 100644
+index b264717..0000000
+--- a/src/components/LiveDemo.jsx
++++ /dev/null
+@@ -1,110 +0,0 @@
+-import { useEffect, useState } from 'react'
+-
+-const SCRIPT = [
+-  {
+-    role: 'Frontend Developer · Round 2',
+-    question: 'Tell me about a time you fixed a slow page.',
+-    answer:
+-      'Our dashboard took 6 seconds to load. I profiled it, found we re-rendered a 2,000-row table on every keystroke, and moved filtering into a memoised hook. Load time dropped to 1.2 seconds.',
+-    scores: { Structure: 9, Clarity: 8, Impact: 9 },
+-    tip: 'Strong STAR answer. Mention how you measured the result.',
+-  },
+-  {
+-    role: 'SDE Intern · HR Round',
+-    question: 'Why should we hire you over other candidates?',
+-    answer:
+-      'I have shipped three full-stack projects end to end, including an HR system used by my college club. I learn fast, and I already work with your stack.',
+-    scores: { Structure: 7, Clarity: 8, Impact: 6 },
+-    tip: 'Good start. Tie one project directly to this team’s work.',
+-  },
+-]
+-
+-export default function LiveDemo() {
+-  const [i, setI] = useState(0)
+-  const [typed, setTyped] = useState('')
+-  const [phase, setPhase] = useState('asking') // asking → answering → feedback
+-  const item = SCRIPT[i]
+-
+-  useEffect(() => {
+-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+-    if (reduce) {
+-      setTyped(item.answer)
+-      setPhase('feedback')
+-      return
+-    }
+-    setTyped('')
+-    setPhase('asking')
+-    let n = 0
+-    let typer
+-    const start = setTimeout(() => {
+-      setPhase('answering')
+-      typer = setInterval(() => {
+-        n += 2
+-        setTyped(item.answer.slice(0, n))
+-        if (n >= item.answer.length) {
+-          clearInterval(typer)
+-          setPhase('feedback')
+-        }
+-      }, 28)
+-    }, 1400)
+-    const next = setTimeout(() => setI((v) => (v + 1) % SCRIPT.length), 14000)
+-    return () => {
+-      clearTimeout(start)
+-      clearTimeout(next)
+-      clearInterval(typer)
+-    }
+-  }, [i])
+-
+-  return (
+-    <div className="relative rounded-[28px] bg-ink p-5 text-white shadow-[0_30px_60px_-20px_rgba(27,35,64,.45)] sm:p-7">
+-      <div className="flex items-center justify-between text-sm text-white/60">
+-        <span>{item.role}</span>
+-        <span className="flex items-center gap-2">
+-          <span className="h-2 w-2 rounded-full bg-red-400" /> Live practice
+-        </span>
+-      </div>
+-
+-      <div className="mt-6 flex gap-3">
+-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-signal font-display text-sm font-bold">AI</div>
+-        <p className="rounded-2xl rounded-tl-sm bg-white/10 px-4 py-3 text-[15px] leading-relaxed">{item.question}</p>
+-      </div>
+-
+-      <div className="mt-4 flex flex-row-reverse gap-3">
+-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/90 font-display text-sm font-bold text-ink">You</div>
+-        <div className="min-h-[92px] flex-1 rounded-2xl rounded-tr-sm bg-white px-4 py-3 text-[15px] leading-relaxed text-ink">
+-          {phase === 'asking' ? (
+-            <span className="wave flex h-6 items-end gap-1" aria-label="Listening">
+-              {[...Array(5)].map((_, k) => (
+-                <span key={k} className="block h-6 w-1.5 rounded-full bg-signal" />
+-              ))}
+-            </span>
+-          ) : (
+-            <span className={phase === 'answering' ? 'caret' : ''}>{typed}</span>
+-          )}
+-        </div>
+-      </div>
+-
+-      <div
+-        className={`mt-5 rounded-2xl border border-amber/40 bg-amber/10 p-4 transition-opacity duration-500 ${
+-          phase === 'feedback' ? 'opacity-100' : 'opacity-0'
+-        }`}
+-        aria-live="polite"
+-      >
+-        <div className="grid grid-cols-3 gap-3">
+-          {Object.entries(item.scores).map(([k, v]) => (
+-            <div key={k}>
+-              <div className="text-xs text-white/60">{k}</div>
+-              <div className="font-display text-2xl font-bold">
+-                {v}<span className="text-sm font-medium text-white/50">/10</span>
+-              </div>
+-              <div className="mt-1 h-1.5 rounded-full bg-white/10">
+-                <div className="h-full rounded-full bg-amber" style={{ width: `${v * 10}%` }} />
+-              </div>
+-            </div>
+-          ))}
+-        </div>
+-        <p className="mt-3 text-sm text-white/80">{item.tip}</p>
+-      </div>
+-    </div>
+-  )
+-}
+diff --git a/src/components/Nav.jsx b/src/components/Nav.jsx
+deleted file mode 100644
+index a36ce38..0000000
+--- a/src/components/Nav.jsx
++++ /dev/null
+@@ -1,41 +0,0 @@
+-import { useState } from 'react'
+-
+-const links = [
+-  ['How it works', '#how'],
+-  ['Features', '#features'],
+-  ['Report', '#report'],
+-  ['FAQ', '#faq'],
+-]
+-
+-export default function Nav() {
+-  const [open, setOpen] = useState(false)
+-  return (
+-    <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/85 backdrop-blur">
+-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+-        <a href="#" className="flex items-center gap-2 font-display text-xl font-bold">
+-          <img src="/favicon.svg" alt="" className="h-7 w-7" /> InterviewAI
+-        </a>
+-        <ul className="hidden items-center gap-8 text-[15px] text-muted md:flex">
+-          {links.map(([l, h]) => (
+-            <li key={h}><a className="hover:text-ink" href={h}>{l}</a></li>
+-          ))}
+-        </ul>
+-        <div className="hidden items-center gap-3 md:flex">
+-          <a href="#" className="px-3 py-2 text-[15px] font-medium">Log in</a>
+-          <a href="#start" className="rounded-full bg-signal px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-signalDark">Start practising</a>
+-        </div>
+-        <button className="md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu">
+-          <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2"><path d={open ? 'M6 6l14 14M20 6 6 20' : 'M4 8h18M4 13h18M4 18h18'} /></svg>
+-        </button>
+-      </nav>
+-      {open && (
+-        <ul className="space-y-1 border-t border-line px-5 py-4 md:hidden">
+-          {links.map(([l, h]) => (
+-            <li key={h}><a onClick={() => setOpen(false)} className="block py-2" href={h}>{l}</a></li>
+-          ))}
+-          <li><a href="#start" className="mt-2 block rounded-full bg-signal py-3 text-center font-semibold text-white">Start practising</a></li>
+-        </ul>
+-      )}
+-    </header>
+-  )
+-}
+diff --git a/src/components/Sections.jsx b/src/components/Sections.jsx
+index 35f15b2..2bdc93d 100644
+--- a/src/components/Sections.jsx
++++ b/src/components/Sections.jsx
+@@ -1,13 +1,13 @@
+ import { useState } from 'react'
+-import LiveDemo from './LiveDemo.jsx'
++import DashboardPreview from './DashboardPreview.jsx'
+ 
+ const ROLES = ['SDE Intern', 'Frontend Developer', 'Backend Developer', 'Data Analyst', 'HR Round', 'Core EIE / ECE']
+ 
+ export function Hero() {
+   const [role, setRole] = useState(ROLES[0])
+   return (
+-    <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-14 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
+-      <div>
++    <section className="mx-auto max-w-6xl px-5 pb-20 pt-14 lg:pt-20">
++      <div className="max-w-2xl">
+         <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
+           Rehearse the interview before it counts.
+         </h1>
+@@ -39,7 +39,10 @@ export function Hero() {
+           </div>
+         </div>
+       </div>
+-      <LiveDemo />
++
++      <div className="mt-12">
++        <DashboardPreview />
++      </div>
+     </section>
+   )
+ }
+diff --git a/src/components/Sidebar.jsx b/src/components/Sidebar.jsx
+new file mode 100644
+index 0000000..56de4dc
+--- /dev/null
++++ b/src/components/Sidebar.jsx
+@@ -0,0 +1,79 @@
++import { useState } from 'react'
++import Icon from './icons.jsx'
++
++const NAV = [
++  ['Dashboard', 'home'],
++  ['Interviews', 'mic'],
++  ['Analysis', 'chart'],
++  ['AI insights', 'spark'],
++  ['Practice', 'play'],
++  ['Reports', 'doc'],
++  ['Settings', 'gear'],
++]
++
++export default function Sidebar() {
++  const [open, setOpen] = useState(false)
++  const [active, setActive] = useState('Interviews')
++
++  const body = (
++    <div className="flex h-full flex-col bg-ink text-white">
++      <div className="flex items-center gap-2 px-6 py-6">
++        <img src="/favicon.svg" alt="" className="h-7 w-7" />
++        <span className="font-display text-lg font-bold">InterviewAI</span>
++      </div>
++      <p className="px-6 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">Main menu</p>
++      <nav className="flex-1 space-y-1 px-3">
++        {NAV.map(([label, icon]) => (
++          <button
++            key={label}
++            type="button"
++            onClick={() => {
++              setActive(label)
++              setOpen(false)
++            }}
++            aria-pressed={active === label}
++            className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[15px] transition-colors ${
++              active === label ? 'bg-signal text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
++            }`}
++          >
++            <Icon name={icon} />
++            {label}
++          </button>
++        ))}
++      </nav>
++      <div className="p-3">
++        <a
++          href="#start"
++          className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-[15px] font-medium hover:bg-white/15"
++        >
++          <Icon name="logout" className="h-4 w-4" />
++          Start practising
++        </a>
++      </div>
++    </div>
++  )
++
++  return (
++    <>
++      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-paper/90 px-5 py-4 backdrop-blur lg:hidden">
++        <a href="#" className="flex items-center gap-2 font-display text-lg font-bold">
++          <img src="/favicon.svg" alt="" className="h-6 w-6" /> InterviewAI
++        </a>
++        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu">
++          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
++            <path d={open ? 'M6 6l12 12M18 6 6 18' : 'M3 7h18M3 12h18M3 17h18'} />
++          </svg>
++        </button>
++      </div>
++
++      {open && (
++        <div className="fixed inset-0 z-40 lg:hidden">
++          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
++          <div className="absolute inset-y-0 left-0 w-72 shadow-2xl">{body}</div>
++        </div>
++      )}
++
++      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 lg:block">{body}</aside>
++    </>
++  )
++}
+diff --git a/src/components/icons.jsx b/src/components/icons.jsx
+new file mode 100644
+index 0000000..9e66de6
+--- /dev/null
++++ b/src/components/icons.jsx
+@@ -0,0 +1,31 @@
++const PATHS = {
++  home: 'M4 11.5 12 4l8 7.5M6 10v9h12v-9',
++  mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm-6-3a6 6 0 0 0 12 0M12 18v3',
++  chart: 'M5 19V9m7 10V4m7 15v-7',
++  spark: 'M12 3v4M12 17v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M3 12h4M17 12h4M4.2 19.8 7 17M17 7l2.8-2.8',
++  play: 'M8 6.5v11l9-5.5-9-5.5Z',
++  doc: 'M7 3h7l4 4v14H7V3Zm7 0v4h4',
++  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3a7.9 7.9 0 0 0-.2-1.8l2-1.6-2-3.4-2.4 1a8 8 0 0 0-3.1-1.8L14 2h-4l-.3 2.4a8 8 0 0 0-3.1 1.8l-2.4-1-2 3.4 2 1.6A7.9 7.9 0 0 0 4 12c0 .6.1 1.2.2 1.8l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 3.1 1.8L10 22h4l.3-2.4a8 8 0 0 0 3.1-1.8l2.4 1 2-3.4-2-1.6c.1-.6.2-1.2.2-1.8Z',
++  logout: 'M15 17l5-5-5-5M20 12H9M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6',
++  bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6V16h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z',
++  target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-4a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
++  notes: 'M6 3h9l4 4v14H6V3Zm0 8h11M6 15h11M6 7h5',
++  camera: 'M3 7h3l1.5-2h7L16 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Zm9 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z',
++  volume: 'M4 9v6h4l5 4V5L8 9H4Zm12.5-1.5a5 5 0 0 1 0 9',
++  phoneOff: 'm3 3 18 18M10.7 10.7a3 3 0 0 0 .8 2.6l1 1c.6.6 1.6.7 2.3.2l1.2-.8a2 2 0 0 1 2.2.1l2.6 1.9c.6.5.7 1.4.2 2l-1.4 1.6a2 2 0 0 1-1.9.6C11.8 18.8 5.2 12.2 4 5.5a2 2 0 0 1 .6-1.9L6.2 2.2a1.5 1.5 0 0 1 2 .2l1.9 2.6c.4.6.4 1.5-.1 2.1l-.8 1.1',
++  bell: 'M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 13 6 9Zm4.5 9a1.5 1.5 0 0 0 3 0',
++  back: 'm14 6-6 6 6 6',
++  check: 'm5 12 5 5L20 7',
++  warn: 'M12 3 2 20h20L12 3Zm0 7v4m0 3h.01',
++  flag: 'M5 21V4h13l-3 4 3 4H5',
++}
++
++export default function Icon({ name, className = 'h-5 w-5' }) {
++  const d = PATHS[name]
++  if (!d) return null
++  return (
++    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
++      <path d={d} />
++    </svg>
++  )
++}
+diff --git a/tailwind.config.js b/tailwind.config.js
+index 3198da0..543fdf2 100644
+--- a/tailwind.config.js
++++ b/tailwind.config.js
+@@ -12,6 +12,7 @@ export default {
+         signalDark: '#2448C2',
+         amber: '#F2A93B',
+         mint: '#2FA37A',
++        blush: '#FBEEF1',
+       },
+       fontFamily: {
+         display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+-- 
+2.43.0
+
