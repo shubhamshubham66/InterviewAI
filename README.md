@@ -17,15 +17,18 @@ AI mock interview practice: an AI interviewer asks role-specific questions, list
 - [x] Speech & Communication Coach (filler-word count, speaking pace, per-answer tips)
 - [x] Answer Improvement Coach (STAR-structured rewrite + missing concepts, on demand in the report)
 
+**Phase 3 — Coding & Technical Practice**
+- [x] Live Coding Interview — in-browser editor (CodeMirror), 5 DSA problems, sandboxed test execution with a timeout, AI code-quality feedback
+- [x] AI Question Bank — DSA, SQL, DBMS, OS, Computer Networks, OOPs and HR, browsable by category with expandable answers
+
 **Later phases**
 - [ ] Auth & accounts, progress dashboard across sessions
-- [ ] Live coding round, AI question bank
 - [ ] Peer mock interviews, college placement dashboard, accessibility & security
 - [ ] Settings, notifications, offline practice
 
 ## Project layout
-- `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`.
-- `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes.
+- `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`.
+- `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank.
 
 ## Run locally
 Frontend and backend run as separate processes.
@@ -56,3 +59,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ## Deploy
 - Frontend: import the repo on Vercel — framework preset **Vite**, build `npm run build`, output `dist`.
 - Backend: deploy `server/` separately (Render, Railway, Fly.io, a Vercel serverless function, etc.) with `ANTHROPIC_API_KEY` set, and point the frontend's `VITE_API_URL` at it.
+
+## Known limitations
+- **Code execution sandbox**: the Live Coding Interview runs submitted JavaScript in a separate child process with a memory cap and a hard timeout — isolation for one trusted user running their own practice code, not a hardened multi-tenant sandbox (it does not block network or file-system access from inside that process). Don't expose it as a public, unauthenticated service.
+- **react-router-dom**: there's an open advisory (open-redirect in `<Link>`/`useNavigate`, SSR-hydration issue) with no fix yet on the 6.x line — only 7.x is patched. Not exploitable here since this is a client-only SPA with no SSR and no route targets built from untrusted input, but worth a deliberate v7 migration later.

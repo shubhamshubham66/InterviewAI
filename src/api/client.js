@@ -43,3 +43,35 @@ export async function parseResume(file) {
   formData.append('resume', file)
   return request('/resume/parse', { method: 'POST', body: formData })
 }
+
+export function listCodingProblems() {
+  return request('/coding/problems')
+}
+
+export function getCodingProblem(id) {
+  return request(`/coding/problems/${id}`)
+}
+
+export function runCode({ problemId, code, role }) {
+  return request(`/coding/problems/${problemId}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, role }),
+  })
+}
+
+export function getQuestionBankCategories() {
+  return request('/question-bank/categories')
+}
+
+export function listQuestionBank({ category, difficulty } = {}) {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  if (difficulty) params.set('difficulty', difficulty)
+  const qs = params.toString()
+  return request(`/question-bank${qs ? `?${qs}` : ''}`)
+}
+
+export function getQuestionBankItem(id) {
+  return request(`/question-bank/${id}`)
+}

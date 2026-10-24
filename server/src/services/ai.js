@@ -161,6 +161,37 @@ function mockImprove({ answer }) {
   }
 }
 
+function mockReviewCode({ code, allPassed }) {
+  const lines = code.split('\n').filter((l) => l.trim())
+  const hasComments = /\/\/|\/\*/.test(code)
+  const maxNesting = (code.match(/\{/g) || []).length
+  const tips = []
+  if (!allPassed) tips.push('Get all test cases passing first — correctness before style.')
+  if (lines.length > 40) tips.push('This solution is long for the problem — look for a simpler approach.')
+  if (maxNesting > 4) tips.push('There is deep nesting here — consider early returns to flatten it.')
+  if (!hasComments && lines.length > 15) tips.push('A short comment on the overall approach would help a reviewer follow it faster.')
+  if (!tips.length) tips.push('Clean and reasonably concise. Think about edge cases: empty input, duplicates, very large input.')
+  return { feedback: tips.join(' '), mock: true }
+}
+
+export async function reviewCode({ role, problemTitle, code, allPassed }) {
+  if (!aiEnabled) return mockReviewCode({ code, allPassed })
+
+  const system = [
+    'You review a candidate\'s coding-interview submission for code quality, not just correctness.',
+    `Role: ${role}. Problem: ${problemTitle}. Tests passed: ${allPassed}.`,
+    'Comment on readability, time/space complexity, and edge cases they may have missed. 2-3 sentences, direct and specific to this code.',
+    'Reply with ONLY a JSON object: {"feedback": string}.',
+  ].join('\n')
+
+  try {
+    return await callClaude(system, `Code:\n${code}`)
+  } catch (err) {
+    console.error('reviewCode AI call failed, falling back to mock:', err.message)
+    return mockReviewCode({ code, allPassed })
+  }
+}
+
 export async function improveAnswer({ role, question, answer }) {
   if (!aiEnabled) return mockImprove({ answer })
 

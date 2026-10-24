@@ -7,7 +7,7 @@ const NAV = [
   ['Interviews', 'mic', '/interview'],
   ['Analysis', 'chart', null],
   ['AI insights', 'spark', null],
-  ['Practice', 'play', null],
+  ['Practice', 'play', '/practice'],
   ['Reports', 'doc', null],
   ['Settings', 'gear', null],
 ]

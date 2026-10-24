@@ -2,6 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import interviewRouter from './routes/interview.js'
 import resumeRouter from './routes/resume.js'
+import codingRouter from './routes/coding.js'
+import questionBankRouter from './routes/questionBank.js'
 import { aiEnabled } from './services/ai.js'
 
 const app = express()
@@ -17,6 +19,8 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/interview', interviewRouter)
 app.use('/api/resume', resumeRouter)
+app.use('/api/coding', codingRouter)
+app.use('/api/question-bank', questionBankRouter)
 
 app.use((err, _req, res, _next) => {
   console.error(err)
