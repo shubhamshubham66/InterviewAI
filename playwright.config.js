@@ -26,7 +26,10 @@ export default defineConfig({
       command: 'npm run dev',
       cwd: 'server',
       port: 8787,
-      env: { DATABASE_PATH: ':memory:' },
+      // Force mock mode regardless of a local server/.env — tests must never
+      // trigger a real email send (these override --env-file-if-exists: Node
+      // only applies .env values for vars not already present in the process env).
+      env: { DATABASE_PATH: ':memory:', BREVO_API_KEY: '', BREVO_SMTP_KEY: '', ANTHROPIC_API_KEY: '' },
       reuseExistingServer: !process.env.CI,
       timeout: 20000,
     },
