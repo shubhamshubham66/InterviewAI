@@ -4,6 +4,7 @@ import { runTests } from '../services/codeRunner.js'
 import { reviewCode } from '../services/ai.js'
 import { recordResult } from '../services/results.js'
 import { optionalAuth } from '../middleware/auth.js'
+import { codeRunRateLimit } from '../middleware/aiRateLimit.js'
 
 const router = Router()
 router.use(optionalAuth)
@@ -19,7 +20,7 @@ router.get('/problems/:id', (req, res) => {
   res.json(publicProblem)
 })
 
-router.post('/problems/:id/run', async (req, res) => {
+router.post('/problems/:id/run', codeRunRateLimit, async (req, res) => {
   const problem = getProblem(req.params.id)
   if (!problem) return res.status(404).json({ error: 'Problem not found.' })
 

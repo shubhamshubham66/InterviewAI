@@ -5,6 +5,7 @@ import { generateQuestion, evaluateAnswer, improveAnswer, aiEnabled } from '../s
 import { analyzeSpeech } from '../services/speechCoach.js'
 import { recordResult } from '../services/results.js'
 import { optionalAuth } from '../middleware/auth.js'
+import { aiRateLimit } from '../middleware/aiRateLimit.js'
 
 const router = Router()
 router.use(optionalAuth)
@@ -19,7 +20,7 @@ router.get('/meta', (_req, res) => {
   res.json({ roles: ROLES, types: TYPES, difficulties: DIFFICULTIES, durations: Object.keys(DURATIONS).map(Number), aiEnabled })
 })
 
-router.post('/start', async (req, res) => {
+router.post('/start', aiRateLimit, async (req, res) => {
   const { role, interviewType, difficulty, resumeContext, company, duration } = req.body || {}
 
   if (!ROLES.includes(role)) return res.status(400).json({ error: 'Unknown role.' })
@@ -113,7 +114,7 @@ function finishInterview(req, res, session, { evaluation = null, speechCoach = n
   res.json({ evaluation, speechCoach, done: true, report })
 }
 
-router.post('/answer', async (req, res) => {
+router.post('/answer', aiRateLimit, async (req, res) => {
   const { sessionId, answer, durationSeconds } = req.body || {}
   const session = getSession(sessionId)
   if (!session) return res.status(404).json({ error: 'Session not found or expired. Start a new interview.' })
@@ -133,7 +134,7 @@ router.post('/answer', async (req, res) => {
 
 // Real-time control: skip the current question without answering it. The
 // skipped turn is kept in the report for visibility but excluded from scoring.
-router.post('/skip', async (req, res) => {
+router.post('/skip', aiRateLimit, async (req, res) => {
   const { sessionId } = req.body || {}
   const session = getSession(sessionId)
   if (!session) return res.status(404).json({ error: 'Session not found or expired. Start a new interview.' })
@@ -153,7 +154,7 @@ router.post('/end', (req, res) => {
   finishInterview(req, res, session, {})
 })
 
-router.post('/improve', async (req, res) => {
+router.post('/improve', aiRateLimit, async (req, res) => {
   const { role, question, answer } = req.body || {}
   if (!role || !question || !answer) {
     return res.status(400).json({ error: 'role, question and answer are required.' })

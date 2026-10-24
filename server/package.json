@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "DATABASE_PATH=:memory: node --test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

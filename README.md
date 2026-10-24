@@ -37,6 +37,12 @@ AI mock interview practice: an AI interviewer asks role-specific questions, list
 
 All 30 originally-specified features are now implemented, with the scoping notes below.
 
+**Phase 6 — Testing, Deploy, Iterate**
+- [x] Backend unit tests (`server/test/`, Node's built-in test runner) covering auth validation, the speech coach, the code sandbox's edge cases (timeout, syntax error, missing function), and progress/streak calculation
+- [x] End-to-end tests (`e2e/`, Playwright) covering the landing page, signup, the full interview flow (setup → skip → answer → early end → report), coding practice, the question bank (including offline), peer rooms (two real browser contexts exchanging a question live), and admin RBAC
+- [x] Cost control — rate limiting on every AI-calling and code-execution route, keyed per signed-in user (falling back to IP), not just on auth
+- [x] CI (`.github/workflows/ci.yml`) — runs backend tests, the frontend build, and the full E2E suite on every push/PR
+
 ## Project layout
 - `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`, peer rooms at `/peer`, placement dashboard at `/admin`, your progress at `/reports`, profile/voice/notifications at `/settings`, auth at `/login` and `/signup`.
 - `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank, handles auth, persists results to SQLite, and runs peer-room REST + WebSocket endpoints.
@@ -66,6 +72,13 @@ To enable real AI-generated questions and evaluation, copy `server/.env.example`
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+### Testing
+```bash
+npm run test:server   # backend unit tests (Node's built-in test runner, in-memory SQLite)
+npm run test:e2e      # Playwright E2E suite — starts both servers itself
+```
+The E2E suite reuses the sandbox's pre-installed Chromium when present (`/opt/pw-browsers/chromium`) and otherwise falls back to Playwright's own managed browser (install with `npx playwright install chromium` first) — CI does this automatically.
 
 ### Auth configuration
 Accounts are stored in a local SQLite file at `server/data/app.db` (created automatically). Sessions are signed JWTs.
