@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { v4 as uuid } from 'uuid'
 import { createSession, getSession, updateSession, deleteSession } from '../store/sessions.js'
-import { generateQuestion, evaluateAnswer, aiEnabled } from '../services/ai.js'
+import { generateQuestion, evaluateAnswer, improveAnswer, aiEnabled } from '../services/ai.js'
+import { analyzeSpeech } from '../services/speechCoach.js'
 
 const router = Router()
 const MAX_QUESTIONS = 5
@@ -38,8 +39,17 @@ router.post('/start', async (req, res) => {
   res.json({ sessionId: session.id, question: question.question, isFollowUp: false, aiEnabled })
 })
 
+function computeAdaptiveHint(turns) {
+  if (!turns.length) return 'maintain'
+  const last = turns[turns.length - 1].evaluation.score
+  if (last < 5) return 'reinforce'
+  const recent = turns.slice(-2).map((t) => t.evaluation.score)
+  if (recent.length === 2 && recent.every((s) => s >= 7.5)) return 'increase'
+  return 'maintain'
+}
+
 router.post('/answer', async (req, res) => {
-  const { sessionId, answer } = req.body || {}
+  const { sessionId, answer, durationSeconds } = req.body || {}
   const session = getSession(sessionId)
   if (!session) return res.status(404).json({ error: 'Session not found or expired. Start a new interview.' })
   if (!answer || !answer.trim()) return res.status(400).json({ error: 'Answer cannot be empty.' })
@@ -47,9 +57,12 @@ router.post('/answer', async (req, res) => {
   const lastQuestion = [...session.history].reverse().find((h) => h.role === 'interviewer')?.text
 
   const evaluation = await evaluateAnswer({ role: session.role, question: lastQuestion, answer })
+  const speechCoach = analyzeSpeech({ transcript: answer, durationSeconds: Number(durationSeconds) || 0 })
 
-  session.turns.push({ question: lastQuestion, answer, evaluation })
+  session.turns.push({ question: lastQuestion, answer, evaluation, speechCoach })
   session.history.push({ role: 'candidate', text: answer })
+
+  const adaptiveHint = computeAdaptiveHint(session.turns)
 
   const askedCount = session.turns.length
   if (askedCount >= MAX_QUESTIONS) {
@@ -59,7 +72,7 @@ router.post('/answer', async (req, res) => {
       s.history = session.history
       s.completed = true
     })
-    return res.json({ evaluation, done: true, report })
+    return res.json({ evaluation, speechCoach, done: true, report })
   }
 
   const next = await generateQuestion({
@@ -68,6 +81,7 @@ router.post('/answer', async (req, res) => {
     difficulty: session.difficulty,
     resumeContext: session.resumeContext,
     history: session.history,
+    adaptiveHint,
   })
   session.history.push({ role: 'interviewer', text: next.question })
 
@@ -76,7 +90,23 @@ router.post('/answer', async (req, res) => {
     s.history = session.history
   })
 
-  res.json({ evaluation, done: false, question: next.question, isFollowUp: Boolean(next.isFollowUp) })
+  res.json({
+    evaluation,
+    speechCoach,
+    done: false,
+    question: next.question,
+    isFollowUp: Boolean(next.isFollowUp),
+    adaptiveHint,
+  })
+})
+
+router.post('/improve', async (req, res) => {
+  const { role, question, answer } = req.body || {}
+  if (!role || !question || !answer) {
+    return res.status(400).json({ error: 'role, question and answer are required.' })
+  }
+  const improved = await improveAnswer({ role, question, answer })
+  res.json(improved)
 })
 
 router.get('/:sessionId/report', (req, res) => {

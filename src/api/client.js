@@ -22,11 +22,19 @@ export function startInterview({ role, interviewType, difficulty, resumeContext 
   })
 }
 
-export function submitAnswer({ sessionId, answer }) {
+export function submitAnswer({ sessionId, answer, durationSeconds }) {
   return request('/interview/answer', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, answer }),
+    body: JSON.stringify({ sessionId, answer, durationSeconds }),
+  })
+}
+
+export function improveAnswer({ role, question, answer }) {
+  return request('/interview/improve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role, question, answer }),
   })
 }
 

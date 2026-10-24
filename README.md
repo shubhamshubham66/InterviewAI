@@ -2,16 +2,26 @@
 
 AI mock interview practice: an AI interviewer asks role-specific questions, listens to your answers and gives a scored feedback report.
 
-## Status — Phase 1 (Core MVP)
+## Status
+**Phase 1 — Core MVP**
 - [x] Landing page (React + Vite + Tailwind)
 - [x] AI mock interview (role, round, difficulty)
 - [x] Resume-based question generation (PDF/DOCX upload)
 - [x] Voice-based interview (browser speech-to-text) with text fallback
 - [x] Smart follow-up questions
 - [x] AI answer evaluation & scoring, session report
-- [ ] Auth & accounts
-- [ ] Progress dashboard across sessions
-- [ ] Advanced AI features, coding rounds, collaboration (later phases)
+
+**Phase 2 — Advanced AI Intelligence**
+- [x] Adaptive interview engine (harder questions on strong answers, reinforcement follow-ups on weak ones)
+- [x] AI Interviewer voice (text-to-speech reads questions aloud, mute toggle)
+- [x] Speech & Communication Coach (filler-word count, speaking pace, per-answer tips)
+- [x] Answer Improvement Coach (STAR-structured rewrite + missing concepts, on demand in the report)
+
+**Later phases**
+- [ ] Auth & accounts, progress dashboard across sessions
+- [ ] Live coding round, AI question bank
+- [ ] Peer mock interviews, college placement dashboard, accessibility & security
+- [ ] Settings, notifications, offline practice
 
 ## Project layout
 - `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`.

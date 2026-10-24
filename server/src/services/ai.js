@@ -49,11 +49,22 @@ const MOCK_BANK = {
   ],
 }
 
-function mockQuestion({ role, history }) {
+function mockQuestion({ role, history, adaptiveHint }) {
   const bank = MOCK_BANK[role] || MOCK_BANK['SDE Intern']
   const asked = history.filter((h) => h.role === 'interviewer').length
+
+  if (adaptiveHint === 'reinforce' && asked > 0) {
+    return {
+      question: 'Let\'s reinforce the basics first — in your own words, what problem was your last answer trying to solve, and why does that approach work?',
+      isFollowUp: true,
+      topic: role,
+      mock: true,
+    }
+  }
+
   if (asked < bank.length) {
-    return { question: bank[asked], isFollowUp: false, topic: role, mock: true }
+    const prefix = adaptiveHint === 'increase' && asked > 0 ? '(Raising the bar) ' : ''
+    return { question: prefix + bank[asked], isFollowUp: false, topic: role, mock: true }
   }
   return {
     question: 'Can you go a bit deeper on that last point, with a specific example?',
@@ -81,18 +92,27 @@ function mockEvaluate({ answer }) {
   }
 }
 
+const ADAPTIVE_INSTRUCTIONS = {
+  increase:
+    'The candidate has been scoring well. Raise the difficulty: ask a harder question, ideally on a new topic, that pushes past the stated difficulty level.',
+  reinforce:
+    'The candidate\'s last answer was weak. Do not move to a new topic yet. Ask a simpler, concept-level follow-up on the SAME topic to help them rebuild it before moving on.',
+  maintain: '',
+}
+
 // ---- Public API ----
 
-export async function generateQuestion({ role, interviewType, difficulty, resumeContext, history }) {
-  if (!aiEnabled) return mockQuestion({ role, history })
+export async function generateQuestion({ role, interviewType, difficulty, resumeContext, history, adaptiveHint = 'maintain' }) {
+  if (!aiEnabled) return mockQuestion({ role, history, adaptiveHint })
 
   const system = [
     'You are an experienced technical interviewer conducting a mock interview.',
     `Role: ${role}. Interview type: ${interviewType}. Difficulty: ${difficulty}.`,
     resumeContext ? `Candidate resume context:\n${resumeContext}` : 'No resume was provided.',
     'Ask one question at a time. If the candidate\'s last answer was vague or shallow, ask a sharper follow-up on the same topic instead of moving on.',
+    ADAPTIVE_INSTRUCTIONS[adaptiveHint] || '',
     'Reply with ONLY a JSON object: {"question": string, "isFollowUp": boolean, "topic": string}.',
-  ].join('\n')
+  ].filter(Boolean).join('\n')
 
   const transcript = history
     .map((h) => `${h.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${h.text}`)
@@ -106,7 +126,7 @@ export async function generateQuestion({ role, interviewType, difficulty, resume
     return await callClaude(system, user)
   } catch (err) {
     console.error('generateQuestion AI call failed, falling back to mock:', err.message)
-    return mockQuestion({ role, history })
+    return mockQuestion({ role, history, adaptiveHint })
   }
 }
 
@@ -127,5 +147,36 @@ export async function evaluateAnswer({ role, question, answer }) {
   } catch (err) {
     console.error('evaluateAnswer AI call failed, falling back to mock:', err.message)
     return mockEvaluate({ answer })
+  }
+}
+
+function mockImprove({ answer }) {
+  return {
+    improvedAnswer:
+      'Situation: name the project and context in one line. Action: what you specifically built or decided, with the tool/tech used. ' +
+      `Result: a measurable outcome (time saved, bug reduced, users affected). Your answer: "${(answer || '').slice(0, 120)}"`,
+    missingConcepts: ['A measurable outcome or result', 'Why you chose that approach over an alternative'],
+    structureTips: 'Use STAR: Situation, Task, Action, Result. Lead with the result if it is strong.',
+    mock: true,
+  }
+}
+
+export async function improveAnswer({ role, question, answer }) {
+  if (!aiEnabled) return mockImprove({ answer })
+
+  const system = [
+    'You help interview candidates improve a specific answer they already gave.',
+    `Role being interviewed for: ${role}.`,
+    'Rewrite their answer into a stronger version (keep it truthful to what they said, just better structured — do not invent facts they did not mention), list concepts or details missing from the original, and give one structural tip (e.g. STAR method).',
+    'Reply with ONLY a JSON object: {"improvedAnswer": string, "missingConcepts": string[], "structureTips": string}.',
+  ].join('\n')
+
+  const user = `Question: ${question}\nOriginal answer: ${answer}`
+
+  try {
+    return await callClaude(system, user)
+  } catch (err) {
+    console.error('improveAnswer AI call failed, falling back to mock:', err.message)
+    return mockImprove({ answer })
   }
 }
