@@ -15,9 +15,10 @@ import './db/index.js'
 
 const app = express()
 const PORT = process.env.PORT || 8787
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
+// Comma-separated list so multiple frontend domains (prod + preview, etc.) can all call this API.
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((o) => o.trim())
 
-app.use(cors({ origin: CORS_ORIGIN }))
+app.use(cors({ origin: CORS_ORIGINS }))
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
