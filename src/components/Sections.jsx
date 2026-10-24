@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import LiveDemo from './LiveDemo.jsx'
+import DashboardPreview from './DashboardPreview.jsx'
 
 const ROLES = ['SDE Intern', 'Frontend Developer', 'Backend Developer', 'Data Analyst', 'HR Round', 'Core EIE / ECE']
 
 export function Hero() {
   const [role, setRole] = useState(ROLES[0])
   return (
-    <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-14 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
-      <div>
+    <section className="mx-auto max-w-6xl px-5 pb-20 pt-14 lg:pt-20">
+      <div className="max-w-2xl">
         <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
           Rehearse the interview before it counts.
         </h1>
@@ -39,7 +39,10 @@ export function Hero() {
           </div>
         </div>
       </div>
-      <LiveDemo />
+
+      <div className="mt-12">
+        <DashboardPreview />
+      </div>
     </section>
   )
 }

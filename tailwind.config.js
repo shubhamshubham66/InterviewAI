@@ -12,6 +12,7 @@ export default {
         signalDark: '#2448C2',
         amber: '#F2A93B',
         mint: '#2FA37A',
+        blush: '#FBEEF1',
       },
       fontFamily: {
         display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
