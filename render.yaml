@@ -8,9 +8,15 @@ services:
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: JWT_SECRET
         generateValue: true
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: CORS_ORIGIN
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
         sync: false
