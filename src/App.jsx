@@ -1,5 +1,8 @@
+import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar.jsx'
-import { Hero, HowItWorks, Features, ReportPreview, FAQ, CTA, Footer } from './components/Sections.jsx'
+import { Footer } from './components/Sections.jsx'
+import Landing from './pages/Landing.jsx'
+import Interview from './pages/Interview.jsx'
 
 export default function App() {
   return (
@@ -7,12 +10,10 @@ export default function App() {
       <Sidebar />
       <div className="lg:pl-64">
         <main>
-          <Hero />
-          <HowItWorks />
-          <Features />
-          <ReportPreview />
-          <FAQ />
-          <CTA />
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/interview" element={<Interview />} />
+          </Routes>
         </main>
         <Footer />
       </div>

@@ -1,0 +1,19 @@
+{
+  "name": "interviewai-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "mammoth": "^1.8.0",
+    "multer": "^2.0.0",
+    "pdf-parse": "^1.1.1",
+    "uuid": "^11.0.3"
+  }
+}

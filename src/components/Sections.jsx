@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import DashboardPreview from './DashboardPreview.jsx'
 
 const ROLES = ['SDE Intern', 'Frontend Developer', 'Backend Developer', 'Data Analyst', 'HR Round', 'Core EIE / ECE']
@@ -32,9 +33,9 @@ export function Hero() {
             ))}
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <a href="#" className="rounded-full bg-signal px-7 py-3.5 font-semibold text-white hover:bg-signalDark">
+            <Link to="/interview" className="rounded-full bg-signal px-7 py-3.5 font-semibold text-white hover:bg-signalDark">
               Start {role} practice
-            </a>
+            </Link>
             <span className="text-sm text-muted">Free · no sign-up for your first session</span>
           </div>
         </div>
@@ -184,7 +185,7 @@ export function CTA() {
     <section className="px-5 pb-20">
       <div className="mx-auto max-w-6xl rounded-[32px] bg-signal px-8 py-16 text-center text-white">
         <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">Your next interview is closer than you think.</h2>
-        <a href="#start" className="mt-8 inline-block rounded-full bg-white px-8 py-4 font-semibold text-signal hover:bg-paper">Start practising free</a>
+        <Link to="/interview" className="mt-8 inline-block rounded-full bg-white px-8 py-4 font-semibold text-signal hover:bg-paper">Start practising free</Link>
       </div>
     </section>
   )
