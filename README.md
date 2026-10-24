@@ -21,14 +21,18 @@ AI mock interview practice: an AI interviewer asks role-specific questions, list
 - [x] Live Coding Interview — in-browser editor (CodeMirror), 5 DSA problems, sandboxed test execution with a timeout, AI code-quality feedback
 - [x] AI Question Bank — DSA, SQL, DBMS, OS, Computer Networks, OOPs and HR, browsable by category with expandable answers
 
+**Phase 4 — Collaboration, Accessibility & Security**
+- [x] Secure authentication — signup/login (bcrypt + JWT), rate-limited, SQLite-backed accounts, account deletion cascades all of a user's data
+- [x] Peer Mock Interviews — shareable room code, live question/answer/feedback exchange over WebSocket, cross-room leaderboard for signed-in users
+- [x] College Placement Dashboard — role-gated `/admin` page with aggregate stats, a skill-gap report, and per-student activity
+- [x] Accessibility & practice controls — adjustable text size (sidebar), keyboard-reachable controls, a skip-to-content link, a repeat-question button, and a pause/resume per-question timer
+
 **Later phases**
-- [ ] Auth & accounts, progress dashboard across sessions
-- [ ] Peer mock interviews, college placement dashboard, accessibility & security
 - [ ] Settings, notifications, offline practice
 
 ## Project layout
-- `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`.
-- `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank.
+- `src/` — frontend (React + Vite + Tailwind). Landing page at `/`, interview flow at `/interview`, coding + question bank at `/practice`, peer rooms at `/peer`, placement dashboard at `/admin`, auth at `/login` and `/signup`.
+- `server/` — backend (Express). Generates interview questions, evaluates answers, parses resumes, runs coding submissions in a sandboxed process, serves the question bank, and (new in Phase 4) handles auth, persists results to SQLite, and runs peer-room REST + WebSocket endpoints.
 
 ## Run locally
 Frontend and backend run as separate processes.
@@ -56,10 +60,21 @@ To enable real AI-generated questions and evaluation, copy `server/.env.example`
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+### Auth configuration
+Accounts are stored in a local SQLite file at `server/data/app.db` (created automatically). Sessions are signed JWTs.
+
+Set `JWT_SECRET` in `server/.env` for production — without it the server generates a random secret at startup, which means **every restart signs everyone out**. Fine for local dev, not for a real deployment:
+```
+JWT_SECRET=<a long random string>
+```
+
 ## Deploy
 - Frontend: import the repo on Vercel — framework preset **Vite**, build `npm run build`, output `dist`.
-- Backend: deploy `server/` separately (Render, Railway, Fly.io, a Vercel serverless function, etc.) with `ANTHROPIC_API_KEY` set, and point the frontend's `VITE_API_URL` at it.
+- Backend: deploy `server/` separately (Render, Railway, Fly.io, etc.) with `ANTHROPIC_API_KEY` and `JWT_SECRET` set, and point the frontend's `VITE_API_URL` at it. **Needs a host with a persistent disk** (Render/Railway/Fly all have one) — a stateless/serverless platform (plain Vercel functions) will reset the SQLite file on every cold start, so avoid that for the backend specifically.
+- The peer-interview WebSocket (`/ws/peer`) needs a host that keeps a long-lived process and supports WS upgrades — true of Render/Railway/Fly, not of a serverless function.
 
 ## Known limitations
 - **Code execution sandbox**: the Live Coding Interview runs submitted JavaScript in a separate child process with a memory cap and a hard timeout — isolation for one trusted user running their own practice code, not a hardened multi-tenant sandbox (it does not block network or file-system access from inside that process). Don't expose it as a public, unauthenticated service.
 - **react-router-dom**: there's an open advisory (open-redirect in `<Link>`/`useNavigate`, SSR-hydration issue) with no fix yet on the 6.x line — only 7.x is patched. Not exploitable here since this is a client-only SPA with no SSR and no route targets built from untrusted input, but worth a deliberate v7 migration later.
+- **Placement-cell signup is self-service** (feature 22 needs some way to create that role without a full invite system to demo it): signup lets anyone pick "Placement cell". Fine for a personal/demo project; a real deployment should replace this with admin-invited accounts.
+- **SQLite, single file**: fine for one deployment's worth of users; a multi-instance/horizontally-scaled deployment would need a networked database (Postgres, etc.) instead.

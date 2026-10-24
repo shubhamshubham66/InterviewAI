@@ -2,8 +2,11 @@ import { Router } from 'express'
 import { listProblems, getProblem } from '../data/codingProblems.js'
 import { runTests } from '../services/codeRunner.js'
 import { reviewCode } from '../services/ai.js'
+import { recordResult } from '../services/results.js'
+import { optionalAuth } from '../middleware/auth.js'
 
 const router = Router()
+router.use(optionalAuth)
 
 router.get('/problems', (_req, res) => {
   res.json({ problems: listProblems() })
@@ -33,6 +36,17 @@ router.post('/problems/:id/run', async (req, res) => {
   if (!run.error && !run.compileError) {
     const review = await reviewCode({ role: role || 'SDE Intern', problemTitle: problem.title, code, allPassed: run.allPassed })
     feedback = review.feedback
+  }
+
+  if (results.length && req.user) {
+    recordResult({
+      userId: req.user.id,
+      kind: 'coding',
+      role: role || 'SDE Intern',
+      interviewType: problem.title,
+      difficulty: problem.difficulty,
+      averageScore: Math.round((results.filter((r) => r.passed).length / results.length) * 10 * 10) / 10,
+    })
   }
 
   res.json({

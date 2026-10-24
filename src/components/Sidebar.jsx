@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Icon from './icons.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { useTextSize } from '../hooks/useTextSize.js'
 
 const NAV = [
   ['Dashboard', 'home', '/'],
   ['Interviews', 'mic', '/interview'],
-  ['Analysis', 'chart', null],
-  ['AI insights', 'spark', null],
   ['Practice', 'play', '/practice'],
+  ['Peer practice', 'chart', '/peer'],
+  ['AI insights', 'spark', null],
   ['Reports', 'doc', null],
   ['Settings', 'gear', null],
 ]
@@ -15,6 +17,11 @@ const NAV = [
 export default function Sidebar() {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const textSize = useTextSize()
+
+  const nav = user?.role === 'placement_admin' ? [...NAV, ['Placement dashboard', 'chart', '/admin']] : NAV
 
   const body = (
     <div className="flex h-full flex-col bg-ink text-white">
@@ -22,9 +29,39 @@ export default function Sidebar() {
         <img src="/favicon.svg" alt="" className="h-7 w-7" />
         <span className="font-display text-lg font-bold">InterviewAI</span>
       </div>
+
+      <div className="px-3 pb-2">
+        {user ? (
+          <div className="rounded-xl bg-white/5 px-4 py-3">
+            <p className="truncate text-sm font-semibold">{user.name}</p>
+            <p className="truncate text-xs text-white/50">{user.role === 'placement_admin' ? 'Placement cell' : 'Student'}</p>
+            <button
+              type="button"
+              onClick={() => {
+                logout()
+                setOpen(false)
+                navigate('/')
+              }}
+              className="mt-2 text-xs font-medium text-white/60 hover:text-white"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2 px-1">
+            <Link to="/login" onClick={() => setOpen(false)} className="flex-1 rounded-xl border border-white/15 px-3 py-2 text-center text-sm hover:bg-white/5">
+              Sign in
+            </Link>
+            <Link to="/signup" onClick={() => setOpen(false)} className="flex-1 rounded-xl bg-white/10 px-3 py-2 text-center text-sm hover:bg-white/15">
+              Sign up
+            </Link>
+          </div>
+        )}
+      </div>
+
       <p className="px-6 pb-2 text-xs font-semibold uppercase tracking-wide text-white/40">Main menu</p>
       <nav className="flex-1 space-y-1 px-3">
-        {NAV.map(([label, icon, to]) => {
+        {nav.map(([label, icon, to]) => {
           const active = to ? pathname === to : false
           const className = `flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[15px] transition-colors ${
             active ? 'bg-signal text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
@@ -45,6 +82,31 @@ export default function Sidebar() {
           )
         })}
       </nav>
+
+      <div className="px-3 pb-1">
+        <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-2 text-sm">
+          <span className="text-white/60">Text size</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={textSize.decrease}
+              aria-label="Decrease text size"
+              className="grid h-7 w-7 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={textSize.increase}
+              aria-label="Increase text size"
+              className="grid h-7 w-7 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="p-3">
         <Link
           to="/interview"

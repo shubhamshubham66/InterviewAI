@@ -3,8 +3,11 @@ import { v4 as uuid } from 'uuid'
 import { createSession, getSession, updateSession, deleteSession } from '../store/sessions.js'
 import { generateQuestion, evaluateAnswer, improveAnswer, aiEnabled } from '../services/ai.js'
 import { analyzeSpeech } from '../services/speechCoach.js'
+import { recordResult } from '../services/results.js'
+import { optionalAuth } from '../middleware/auth.js'
 
 const router = Router()
+router.use(optionalAuth)
 const MAX_QUESTIONS = 5
 
 const ROLES = ['SDE Intern', 'Frontend Developer', 'Backend Developer', 'Data Analyst', 'HR Round', 'Core EIE / ECE']
@@ -34,6 +37,7 @@ router.post('/start', async (req, res) => {
     resumeContext: resumeContext || '',
     history,
     turns: [],
+    userId: req.user?.id || null,
   })
 
   res.json({ sessionId: session.id, question: question.question, isFollowUp: false, aiEnabled })
@@ -71,6 +75,14 @@ router.post('/answer', async (req, res) => {
       s.turns = session.turns
       s.history = session.history
       s.completed = true
+    })
+    recordResult({
+      userId: session.userId,
+      kind: 'interview',
+      role: session.role,
+      interviewType: session.interviewType,
+      difficulty: session.difficulty,
+      averageScore: report.averageScore,
     })
     return res.json({ evaluation, speechCoach, done: true, report })
   }

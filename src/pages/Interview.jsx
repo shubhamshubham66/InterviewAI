@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { getMeta, startInterview, submitAnswer, parseResume, improveAnswer } from '../api/client.js'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition.js'
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis.js'
+import { useCountdownTimer } from '../hooks/useCountdownTimer.js'
 import Icon from '../components/icons.jsx'
+
+const QUESTION_TIME_LIMIT = 120
 
 const FALLBACK_ROLES = ['SDE Intern', 'Frontend Developer', 'Backend Developer', 'Data Analyst', 'HR Round', 'Core EIE / ECE']
 const FALLBACK_TYPES = ['Technical', 'Behavioral', 'HR']
@@ -146,6 +149,7 @@ function SessionStep({ session, onAnswered, onFinished }) {
   const tts = useSpeechSynthesis()
   const textareaRef = useRef(null)
   const answerStartRef = useRef(Date.now())
+  const timer = useCountdownTimer(QUESTION_TIME_LIMIT, question)
 
   useEffect(() => {
     if (speech.transcript) setAnswer(speech.transcript)
@@ -191,21 +195,40 @@ function SessionStep({ session, onAnswered, onFinished }) {
         <p className="text-sm font-semibold uppercase tracking-wide text-muted">
           {session.role} · {session.interviewType} · Question {turnCount + 1}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isFollowUp && <span className="rounded-full bg-amber/15 px-3 py-1 text-xs font-semibold text-amber">Follow-up</span>}
+          <button
+            type="button"
+            onClick={timer.toggle}
+            aria-pressed={!timer.running}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+              timer.expired ? 'border-red-300 text-red-500' : 'border-line hover:border-ink/40'
+            }`}
+          >
+            {timer.running ? 'Pause' : 'Resume'} · {timer.label}
+          </button>
           {tts.supported && (
-            <button
-              type="button"
-              onClick={() => {
-                if (voiceEnabled) tts.stop()
-                setVoiceEnabled((v) => !v)
-              }}
-              aria-pressed={voiceEnabled}
-              className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium hover:border-ink/40"
-            >
-              <Icon name="volume" className="h-3.5 w-3.5" />
-              {voiceEnabled ? 'Voice on' : 'Voice off'}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => tts.speak(question)}
+                className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium hover:border-ink/40"
+              >
+                Repeat question
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (voiceEnabled) tts.stop()
+                  setVoiceEnabled((v) => !v)
+                }}
+                aria-pressed={voiceEnabled}
+                className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-medium hover:border-ink/40"
+              >
+                <Icon name="volume" className="h-3.5 w-3.5" />
+                {voiceEnabled ? 'Voice on' : 'Voice off'}
+              </button>
+            </>
           )}
         </div>
       </div>
